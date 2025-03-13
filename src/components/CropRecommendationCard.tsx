@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Droplets, Clock, CreditCard, Seedling, Flower2, Sprout } from 'lucide-react';
+import { Droplets, Clock, CreditCard, Leaf, Flower2, Sprout } from 'lucide-react';
 import { CropRecommendation } from '../utils/cropData';
 
 interface CropRecommendationCardProps {
@@ -58,7 +58,7 @@ const CropRecommendationCard = ({ recommendations }: CropRecommendationCardProps
         return <Sprout className="h-5 w-5" />;
       case 'seedling':
       default:
-        return <Seedling className="h-5 w-5" />;
+        return <Leaf className="h-5 w-5" />;
     }
   };
 

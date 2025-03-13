@@ -8,7 +8,7 @@ import ProfitTrackingCard from '@/components/ProfitTrackingCard';
 import DiseaseDetectionSection from '@/components/DiseaseDetectionSection';
 import { cropPrices, weatherData, cropRecommendations, profitData } from '@/utils/cropData';
 import { handleScrollAnimation } from '@/utils/animations';
-import { ChevronRight, ArrowUpRight } from 'lucide-react';
+import { ChevronRight, ArrowUpRight, BarChart2, Sprout } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Index = () => {
@@ -64,6 +64,31 @@ const Index = () => {
             <MarketPriceCard prices={cropPrices} />
             <CropRecommendationCard recommendations={cropRecommendations} />
             <ProfitTrackingCard data={profitData} />
+          </div>
+          
+          {/* Quick Links to New Pages */}
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 animate-on-scroll">
+            <Link to="/profit-trends" className="agri-card p-5 hover:shadow-md transition-all duration-300 flex items-center group">
+              <div className="bg-agri-blue-light rounded-full p-3 mr-4">
+                <BarChart2 className="h-6 w-6 text-agri-blue-dark" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-agri-neutral-900 group-hover:text-agri-blue-dark transition-colors duration-300">Profit Trends & Analysis</h3>
+                <p className="text-sm text-agri-neutral-600">Detailed financial insights and trend analysis</p>
+              </div>
+              <ChevronRight className="h-5 w-5 text-agri-neutral-400 group-hover:text-agri-blue-dark transition-all duration-300 transform group-hover:translate-x-1" />
+            </Link>
+            
+            <Link to="/farm-management" className="agri-card p-5 hover:shadow-md transition-all duration-300 flex items-center group">
+              <div className="bg-agri-green-light rounded-full p-3 mr-4">
+                <Sprout className="h-6 w-6 text-agri-green-dark" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-agri-neutral-900 group-hover:text-agri-green-dark transition-colors duration-300">Farm Management</h3>
+                <p className="text-sm text-agri-neutral-600">Monitor crop growth and schedule activities</p>
+              </div>
+              <ChevronRight className="h-5 w-5 text-agri-neutral-400 group-hover:text-agri-green-dark transition-all duration-300 transform group-hover:translate-x-1" />
+            </Link>
           </div>
         </div>
       </section>

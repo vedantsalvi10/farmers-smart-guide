@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Leaf } from 'lucide-react';
+import { Menu, X, Leaf, BarChart2 } from 'lucide-react';
 
 const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -24,7 +24,9 @@ const Header = () => {
   const navLinks = [
     { name: 'Dashboard', path: '/' },
     { name: 'Data Entry', path: '/entry' },
-    { name: 'Disease Detection', path: '/disease-detection' }
+    { name: 'Disease Detection', path: '/disease-detection' },
+    { name: 'Profit Trends', path: '/profit-trends' },
+    { name: 'Farm Management', path: '/farm-management' }
   ];
 
   return (

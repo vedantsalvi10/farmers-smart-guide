@@ -1,6 +1,7 @@
+
 import { useState } from 'react';
 import { Check, AlertCircle } from 'lucide-react';
-import { toast } from "@/components/ui/sonner";
+import { toast } from "sonner";
 
 const EntryForm = () => {
   const [formData, setFormData] = useState({
