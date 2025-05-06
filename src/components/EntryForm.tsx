@@ -1,9 +1,13 @@
-
 import { useState } from 'react';
-import { Check, AlertCircle } from 'lucide-react';
+import { Check, AlertCircle, Loader2 } from 'lucide-react';
 import { toast } from "sonner";
+import { useAuth } from '@/lib/authContext';
+import { cropEntryService } from '@/models/cropData';
+import { CropEntry } from '@/models/cropData';
+import { logActivity } from '@/lib/activityLogger';
 
 const EntryForm = () => {
+  const { currentUser } = useAuth();
   const [formData, setFormData] = useState({
     cropType: '',
     landArea: '',
@@ -18,10 +22,12 @@ const EntryForm = () => {
   
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    setError(null);
   };
 
   const calculateExpectedProfit = () => {
@@ -38,21 +44,76 @@ const EntryForm = () => {
     return expectedRevenue - totalExpenses;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
+    setError(null);
     
-    // Simulate API call to submit data
-    setTimeout(() => {
+    if (!currentUser) {
+      setError("You must be logged in to save crop data");
       setSubmitting(false);
+      return;
+    }
+    
+    try {
+      const expectedProfit = calculateExpectedProfit();
+      
+      // Create a crop entry object
+      const cropEntry: Omit<CropEntry, 'id'> = {
+        cropType: formData.cropType,
+        landArea: parseFloat(formData.landArea),
+        plantingDate: formData.plantingDate,
+        seedCost: parseFloat(formData.seedCost || '0'),
+        fertilizerCost: parseFloat(formData.fertilizerCost || '0'),
+        laborCost: parseFloat(formData.laborCost || '0'),
+        otherExpenses: parseFloat(formData.otherExpenses || '0'),
+        expectedYield: parseFloat(formData.expectedYield),
+        expectedPrice: parseFloat(formData.expectedPrice),
+        expectedProfit: expectedProfit,
+        status: 'active',
+        userId: currentUser.uid
+      };
+      
+      // Save the crop entry
+      const savedEntry = await cropEntryService.create(cropEntry, currentUser.uid);
+      
+      // Log activity
+      await logActivity({
+        userId: currentUser.uid,
+        action: "Added Crop Entry",
+        details: `Added ${formData.cropType} crop entry with ${formData.landArea} acres`,
+        entityId: savedEntry.id,
+        entityType: "cropEntries"
+      });
+      
+      // Show success
       setSuccess(true);
-      toast("Entry successfully saved");
+      toast.success("Crop entry successfully saved");
+      
+      // Reset form
+      setFormData({
+        cropType: '',
+        landArea: '',
+        plantingDate: '',
+        seedCost: '',
+        fertilizerCost: '',
+        laborCost: '',
+        otherExpenses: '',
+        expectedYield: '',
+        expectedPrice: ''
+      });
       
       // Reset success state after a delay
       setTimeout(() => {
         setSuccess(false);
       }, 3000);
-    }, 1500);
+    } catch (err) {
+      console.error("Error saving crop entry:", err);
+      setError("Failed to save crop entry. Please try again.");
+      toast.error("Failed to save crop entry");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const cropTypes = [
@@ -74,6 +135,24 @@ const EntryForm = () => {
     <div className="agri-card max-w-2xl mx-auto">
       <div className="p-6">
         <h2 className="text-xl font-semibold text-agri-neutral-900 mb-6">Crop Data Entry</h2>
+        
+        {error && (
+          <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-md text-rose-500 text-sm">
+            <div className="flex items-start">
+              <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0" />
+              <p>{error}</p>
+            </div>
+          </div>
+        )}
+        
+        {!currentUser && (
+          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-md text-amber-600 text-sm">
+            <div className="flex items-start">
+              <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0" />
+              <p>You need to login to save crop entries to your account.</p>
+            </div>
+          </div>
+        )}
         
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -249,34 +328,31 @@ const EntryForm = () => {
               {expectedProfit < 0 && (
                 <p className="mt-2 text-xs text-rose-500 flex items-center">
                   <AlertCircle className="h-3 w-3 mr-1" />
-                  Warning: Expected loss. Consider adjusting costs or expected yield.
+                  Warning: This crop may result in a loss based on your inputs
                 </p>
               )}
             </div>
           )}
           
-          <div className="mt-8 flex justify-end">
+          {/* Submit Button */}
+          <div className="mt-8">
             <button
               type="submit"
-              disabled={submitting || success}
-              className={`premium-button ${
-                success 
-                  ? 'bg-emerald-500 hover:bg-emerald-600' 
-                  : 'bg-gradient-to-r from-agri-green-dark to-agri-blue-dark'
-              } min-w-[120px]`}
+              disabled={submitting}
+              className={`w-full premium-button ${success ? 'bg-agri-green border-agri-green' : ''} flex items-center justify-center`}
             >
               {submitting ? (
-                <span className="flex items-center justify-center">
-                  <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></span>
+                <>
+                  <Loader2 className="animate-spin h-4 w-4 mr-2" />
                   Saving...
-                </span>
+                </>
               ) : success ? (
-                <span className="flex items-center justify-center">
-                  <Check className="h-4 w-4 mr-1" />
-                  Saved
-                </span>
+                <>
+                  <Check className="h-4 w-4 mr-2" />
+                  Saved Successfully
+                </>
               ) : (
-                'Save Entry'
+                'Save Crop Data'
               )}
             </button>
           </div>

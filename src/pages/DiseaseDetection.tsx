@@ -1,12 +1,15 @@
-
 import { useEffect } from 'react';
 import Header from '@/components/Header';
 import DiseaseDetectionSection from '@/components/DiseaseDetectionSection';
+import DiseaseDetectionList from '@/components/DiseaseDetectionList';
 import { handleScrollAnimation } from '@/utils/animations';
-import { Microscope, ChevronLeft } from 'lucide-react';
+import { Microscope, ChevronLeft, History } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '@/lib/authContext';
 
 const DiseaseDetection = () => {
+  const { currentUser } = useAuth();
+  
   useEffect(() => {
     const cleanupAnimation = handleScrollAnimation();
     return () => cleanupAnimation();
@@ -51,6 +54,23 @@ const DiseaseDetection = () => {
           </div>
         </div>
       </section>
+      
+      {/* Disease Detection History Section */}
+      {currentUser && (
+        <section className="px-4 sm:px-6 lg:px-8 pb-16">
+          <div className="container mx-auto animate-on-scroll">
+            <div className="max-w-2xl mx-auto">
+              <div className="flex items-center space-x-3 mb-4">
+                <History className="h-5 w-5 text-agri-blue" />
+                <h2 className="text-xl font-semibold text-agri-neutral-900">
+                  Your Detection History
+                </h2>
+              </div>
+              <DiseaseDetectionList />
+            </div>
+          </div>
+        </section>
+      )}
       
       {/* How It Works Section */}
       <section className="px-4 sm:px-6 lg:px-8 pb-16 bg-agri-neutral-100">

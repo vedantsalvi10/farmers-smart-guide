@@ -1,17 +1,20 @@
-
 import { useEffect } from 'react';
 import Header from '@/components/Header';
 import WeatherCard from '@/components/WeatherCard';
 import MarketPriceCard from '@/components/MarketPriceCard';
 import CropRecommendationCard from '@/components/CropRecommendationCard';
 import ProfitTrackingCard from '@/components/ProfitTrackingCard';
+import UserActivityCard from '@/components/UserActivityCard';
 import DiseaseDetectionSection from '@/components/DiseaseDetectionSection';
 import { cropPrices, weatherData, cropRecommendations, profitData } from '@/utils/cropData';
 import { handleScrollAnimation } from '@/utils/animations';
-import { ChevronRight, ArrowUpRight, BarChart2, Sprout } from 'lucide-react';
+import { ChevronRight, ArrowUpRight, BarChart2, Sprout, History } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '@/lib/authContext';
 
 const Index = () => {
+  const { currentUser } = useAuth();
+  
   useEffect(() => {
     const cleanupAnimation = handleScrollAnimation();
     return () => cleanupAnimation();
@@ -66,6 +69,11 @@ const Index = () => {
             <ProfitTrackingCard data={profitData} />
           </div>
           
+          {/* User Activity Section */}
+          <div className="mt-8 animate-on-scroll">
+            <UserActivityCard />
+          </div>
+          
           {/* Quick Links to New Pages */}
           <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 animate-on-scroll">
             <Link to="/profit-trends" className="agri-card p-5 hover:shadow-md transition-all duration-300 flex items-center group">
@@ -93,7 +101,7 @@ const Index = () => {
         </div>
       </section>
       
-      {/* Disease Detection Section */}
+      {/* Disease Detection Section - Only show if user is not logged in or has few activities */}
       <section className="px-4 sm:px-6 lg:px-8 pb-16">
         <div className="container mx-auto">
           <h2 className="text-2xl font-semibold text-agri-neutral-900 mb-8 animate-on-scroll">Crop Health Analysis</h2>
@@ -134,8 +142,8 @@ const Index = () => {
                 description: 'Get suggestions on which crops to plant based on local conditions.'
               },
               {
-                title: 'Offline Access',
-                description: 'Access critical features even in areas with poor connectivity.'
+                title: 'Activity Tracking',
+                description: 'Keep a record of all your farming activities and crop management tasks.'
               }
             ].map((feature, index) => (
               <div key={index} className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-300">

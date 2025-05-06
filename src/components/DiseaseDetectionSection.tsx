@@ -1,12 +1,18 @@
-
 import { useState } from 'react';
 import { Upload, X, Check, AlertTriangle, Loader2 } from 'lucide-react';
+import { useAuth } from '@/lib/authContext';
+import { diseaseDetectionService } from '@/models/cropData';
+import { DiseaseDetection } from '@/models/cropData';
+import { logActivity } from '@/lib/activityLogger';
+import { toast } from 'sonner';
 
 const DiseaseDetectionSection = () => {
+  const { currentUser } = useAuth();
   const [image, setImage] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ healthy: boolean; disease?: string; confidence: number } | null>(null);
+  const [selectedCropType, setSelectedCropType] = useState<string>('');
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -65,48 +71,165 @@ const DiseaseDetectionSection = () => {
           'Rust',
           'Bacterial Blight'
         ];
+        const detectedDisease = diseases[Math.floor(Math.random() * diseases.length)];
+        const confidence = 70 + Math.random() * 20;
+        
         setResult({
           healthy: false,
-          disease: diseases[Math.floor(Math.random() * diseases.length)],
-          confidence: 70 + Math.random() * 20
+          disease: detectedDisease,
+          confidence: confidence
         });
+        
+        // Save to Firebase if user is logged in
+        if (currentUser) {
+          saveDiseaseDetection(detectedDisease, confidence);
+        }
       }
       
       setLoading(false);
     }, 2000);
   };
 
+  const saveDiseaseDetection = async (disease: string, confidence: number) => {
+    if (!currentUser) return;
+    
+    try {
+      // Create a disease detection object
+      const diseaseDetection: Omit<DiseaseDetection, 'id'> = {
+        cropType: selectedCropType || 'Unknown',
+        imageUrl: image || '',
+        diseaseIdentified: disease,
+        confidence: confidence,
+        symptoms: getSymptoms(disease),
+        recommendations: getRecommendations(disease),
+        status: 'identified',
+        userId: currentUser.uid
+      };
+      
+      // Save the disease detection
+      const savedDetection = await diseaseDetectionService.create(diseaseDetection, currentUser.uid);
+      
+      // Log activity
+      await logActivity({
+        userId: currentUser.uid,
+        action: "Disease Detection",
+        details: `Detected ${disease} on ${selectedCropType || 'crop'} with ${confidence.toFixed(1)}% confidence`,
+        entityId: savedDetection.id,
+        entityType: "diseaseDetections"
+      });
+      
+      toast.success("Disease detection saved to your records");
+    } catch (err) {
+      console.error("Error saving disease detection:", err);
+    }
+  };
+
+  // Helper functions to get symptoms and recommendations
+  const getSymptoms = (disease: string): string[] => {
+    switch (disease) {
+      case 'Leaf Spot':
+        return ['Brown or black spots on leaves', 'Yellowing around spots', 'Premature leaf drop'];
+      case 'Powdery Mildew':
+        return ['White powdery substance on leaves', 'Curling or distortion of leaves', 'Stunted growth'];
+      case 'Rust':
+        return ['Orange-brown pustules on leaves', 'Yellowing of affected tissue', 'Defoliation'];
+      case 'Bacterial Blight':
+        return ['Water-soaked lesions', 'Wilting of leaves', 'Yellow halos around lesions'];
+      default:
+        return ['Unknown symptoms'];
+    }
+  };
+
+  const getRecommendations = (disease: string): string[] => {
+    switch (disease) {
+      case 'Leaf Spot':
+        return ['Remove and destroy affected leaves', 'Apply approved fungicide', 'Ensure adequate spacing between plants'];
+      case 'Powdery Mildew':
+        return ['Apply sulfur-based fungicide', 'Increase air circulation', 'Avoid overhead watering'];
+      case 'Rust':
+        return ['Apply fungicide at first sign', 'Remove infected plant debris', 'Rotate crops in following seasons'];
+      case 'Bacterial Blight':
+        return ['Use copper-based bactericide', 'Avoid working with wet plants', 'Practice crop rotation'];
+      default:
+        return ['Consult with agricultural expert'];
+    }
+  };
+
   const resetImage = () => {
     setImage(null);
     setResult(null);
+    setSelectedCropType('');
   };
+
+  const cropTypes = [
+    'Rice',
+    'Wheat',
+    'Cotton',
+    'Sugarcane',
+    'Maize',
+    'Soybeans',
+    'Potato',
+    'Tomato',
+    'Onion',
+    'Other'
+  ];
 
   return (
     <div className="agri-card p-5">
       <h3 className="text-lg font-semibold text-agri-neutral-900">Disease Detection</h3>
       
-      {!image ? (
-        <div
-          className={`mt-4 border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center transition-colors duration-300 ${
-            isDragging 
-              ? 'border-agri-green bg-agri-green-light/20' 
-              : 'border-agri-neutral-300 hover:border-agri-green-dark hover:bg-agri-neutral-100'
-          }`}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-        >
-          <Upload className="h-10 w-10 text-agri-neutral-400" />
-          <p className="mt-3 text-sm text-agri-neutral-600 text-center">
-            Drag & drop an image of your crop here,<br /> or click to browse
-          </p>
-          <input
-            type="file"
-            accept="image/*"
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            onChange={handleImageChange}
-          />
+      {!currentUser && (
+        <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md text-amber-600 text-sm">
+          <div className="flex items-start">
+            <AlertTriangle className="h-5 w-5 mr-2 flex-shrink-0" />
+            <p>Log in to save detection results to your account and track disease history.</p>
+          </div>
         </div>
+      )}
+      
+      {!image ? (
+        <>
+          <div className="mt-4">
+            <label htmlFor="cropType" className="block text-sm font-medium text-agri-neutral-700 mb-1">
+              Crop Type
+            </label>
+            <select
+              id="cropType"
+              value={selectedCropType}
+              onChange={(e) => setSelectedCropType(e.target.value)}
+              className="premium-input"
+            >
+              <option value="">Select crop type</option>
+              {cropTypes.map((crop) => (
+                <option key={crop} value={crop}>{crop}</option>
+              ))}
+            </select>
+          </div>
+          
+          <div
+            className={`mt-4 border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center transition-colors duration-300 ${
+              isDragging 
+                ? 'border-agri-green bg-agri-green-light/20' 
+                : 'border-agri-neutral-300 hover:border-agri-green-dark hover:bg-agri-neutral-100'
+            }`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            <Upload className="h-10 w-10 text-agri-neutral-400" />
+            <p className="mt-3 text-sm text-agri-neutral-600 text-center">
+              Drag & drop an image of your crop here,<br /> or click to browse
+            </p>
+            <input
+              type="file"
+              accept="image/*"
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              onChange={handleImageChange}
+              aria-label="Upload crop image"
+              title="Upload crop image"
+            />
+          </div>
+        </>
       ) : (
         <div className="mt-4">
           <div className="relative">
@@ -118,6 +241,7 @@ const DiseaseDetectionSection = () => {
             <button
               onClick={resetImage}
               className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md hover:bg-agri-neutral-100 transition-colors duration-200"
+              aria-label="Remove image"
             >
               <X className="h-5 w-5 text-agri-neutral-600" />
             </button>
@@ -143,13 +267,21 @@ const DiseaseDetectionSection = () => {
               <p className="mt-2 text-sm text-agri-neutral-600">
                 Confidence: {result.confidence.toFixed(1)}%
               </p>
-              {!result.healthy && (
+              {!result.healthy && result.disease && (
                 <div className="mt-3 p-3 bg-white rounded border border-amber-200">
-                  <h5 className="text-sm font-medium text-amber-700">Recommended Action:</h5>
-                  <p className="mt-1 text-xs text-agri-neutral-600">
-                    Apply fungicide treatment. Remove affected leaves and ensure proper air circulation.
-                    Consider consulting with a local agriculture expert.
-                  </p>
+                  <h5 className="text-sm font-medium text-amber-700">Symptoms:</h5>
+                  <ul className="mt-1 text-xs text-agri-neutral-600 list-disc pl-4">
+                    {getSymptoms(result.disease).map((symptom, index) => (
+                      <li key={index}>{symptom}</li>
+                    ))}
+                  </ul>
+                  
+                  <h5 className="mt-2 text-sm font-medium text-amber-700">Recommended Action:</h5>
+                  <ul className="mt-1 text-xs text-agri-neutral-600 list-disc pl-4">
+                    {getRecommendations(result.disease).map((recommendation, index) => (
+                      <li key={index}>{recommendation}</li>
+                    ))}
+                  </ul>
                 </div>
               )}
             </div>
